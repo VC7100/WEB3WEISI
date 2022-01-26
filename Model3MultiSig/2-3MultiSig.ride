@@ -1,0 +1,37 @@
+{-# STDLIB_VERSION 2 #-}
+{-# CONTENT_TYPE EXPRESSION #-}
+{-# SCRIPT_TYPE ACCOUNT #-}
+
+#define public keys
+let alicePubKey  = base58'5AzfA9UfpWVYiwFwvdr77k6LWupSTGLb14b24oVdEpMM'
+let bobPubKey    = base58'2KwU4vzdgPmKyf7q354H9kSyX9NZjNiq4qbnH2wi2VDF'
+let cooperPubKey = base58'GbrUeGaBfmyFJjSQb9Z8uTCej5GzjXfRDVGJGrmgt5cD'
+
+#check whoever provided the valid proof
+let aliceSigned  = if(sigVerify(tx.bodyBytes, tx.proofs[0], alicePubKey  )) then 1 else 0
+let bobSigned    = if(sigVerify(tx.bodyBytes, tx.proofs[1], bobPubKey    )) then 1 else 0
+let cooperSigned = if(sigVerify(tx.bodyBytes, tx.proofs[2], cooperPubKey )) then 1 else 0
+
+
+let multiSig = 2
+
+func checkSign(tx: Transaction, pubKey: ByteVector) = {
+    if(sigVerify(tx.bodyBytes, tx.proofs[0], pubKey) || sigVerify(tx.bodyBytes, tx.proofs[1], pubKey) || sigVerify(tx.bodyBytes, tx.proofs[2], pubKey)) then 1 else 0
+}
+
+func getMultiSigValue(tx: Transaction) = {
+    let aliceSig = checkSign(tx, alicePubKey)
+    let bobSig = checkSign(tx, bobPubKey)
+    let ericSig = checkSign(tx, ericPubKey)
+    aliceSig + bobSig + ericSig
+}
+
+
+@Verifier(tx)
+func verify() = {
+    match tx {
+        case t: SetScriptTransaction => sigVerify(t.bodyBytes, t.proofs[0], alicePubKey) 
+        case td: TransferTransaction => getMultiSigValue(td) >= multiSig 
+        case _ => false 
+      }
+}
